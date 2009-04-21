@@ -6,9 +6,9 @@ main() ->
 	#template { file="./wwwroot/template.html"}.
 
 title() ->
-	"web_index".
+	"CS150".
 
 body() ->
-	#label{text="web_index body."}.
+	#label{text="whats up?"}.
 	
 event(_) -> ok.
