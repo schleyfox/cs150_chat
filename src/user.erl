@@ -12,23 +12,30 @@ setup() ->
   mnesia:stop().
 
 authenticate(Username, Password) ->
-  [Salt|_] = do(qlc:q([X#user.salt || X <- mnesia:table(user),
-                                  X#user.username =:= Username])),
-  PasswordHash = erlang:md5(Password ++ Salt),
-  case do(qlc:q([X || X <- mnesia:table(user),
-                      X#user.username =:= Username,
-                      X#user.password_hash =:= PasswordHash])) of
-    [User] -> {ok, User};
+  case do(qlc:q([X#user.salt || X <- mnesia:table(user),
+                                  X#user.username =:= Username])) of
+    [Salt] -> PasswordHash = erlang:md5(Password ++ Salt),
+      case do(qlc:q([X || X <- mnesia:table(user),
+                          X#user.username =:= Username,
+                          X#user.password_hash =:= PasswordHash])) of
+        [User] -> {ok, User};
+        [] -> not_found
+      end;
     [] -> not_found
   end.
 
 create(Realname, Username, Password) ->
   {PasswordHash, Salt} = hash_password(Password),
-  User = #user{realname=Realname, username=Username, password_hash=PasswordHash,
-                salt=Salt},
-  mnesia:transaction(fun() ->
-      mnesia:write(User)
-    end).
+  case do(qlc:q([X || X <- mnesia:table(user),
+                      X#user.username =:= Username])) of
+    [] ->
+      User = #user{realname=Realname, username=Username, password_hash=PasswordHash,
+                    salt=Salt},
+      mnesia:transaction(fun() ->
+          mnesia:write(User)
+      end);
+    _ -> {error, user_exists}
+  end.
 
 destroy(Username) ->
   Id = {user, Username},
