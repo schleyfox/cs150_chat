@@ -18,7 +18,9 @@ body() ->
       #label{ text="Password" },
       #password{ id=password, next=login },
       #p{},
-      #button { id=login, text="Login", postback=login }
+      #button { id=login, text="Login", postback=login },
+      " or ",
+      #link {text="Register", url="/web/users/register"}
       ],
     
       wf:wire(login, username, #validate{ validators = [

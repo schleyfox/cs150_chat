@@ -4,6 +4,7 @@
 
 start(_, _) -> mnesia:start(), 
               mnesia:wait_for_tables([user], 2000), 
+              chats_server:start(),
               nitrogen:start(cs150_chat).
 stop(_) -> nitrogen:stop().
 

@@ -47,10 +47,13 @@ handle_cast({message, User, Message}, State) ->
 % Add User
 handle_cast({add_user, User, Pid}, State) -> 
   NewState = refresh_active_users(add_user_to_active_users(User, Pid, State)),
+  refresh_all_buddy_lists(NewState),
+  io:format("Whats Up ~w", [is_process_alive(Pid)]),
   {noreply, NewState};
 % Remove User
 handle_cast({remove_user, User, Pid}, State) ->
   NewState = refresh_active_users(remove_user_from_active_users(User, Pid, State)),
+  refresh_all_buddy_lists(NewState),
   {noreply, NewState};
 
 handle_cast(_Msg, State) ->
@@ -69,26 +72,31 @@ refresh_active_users(State) ->
   State#state{
     active_users=
       dict:filter(
-        fun(_, V) ->
-          try is_pid(V) andalso is_process_alive(V)
+        fun(_, [V]) ->
+          try is_process_alive(V)
           catch
-            _ -> false
+            error:_ -> false
           end
         end,
         State#state.active_users)}.
 
 users_to_pids(Users) ->
-  list:map(fun({_, Pid}) -> Pid end, dict:to_list(Users)).
+  lists:map(fun({_, [Pid]}) -> Pid end, dict:to_list(Users)).
+
+refresh_all_buddy_lists(State) ->
+  UserNames = [User#user.username || User <- dict:fetch_keys(State#state.active_users)],
+  [X ! {user_list, UserNames} || X <- users_to_pids(State#state.active_users)],
+  ok.
 
 send_message_to_all_users(User, Message, UserPids) -> 
-  [X!{message, User#user.username, Message} || X <- UserPids],
+  [X ! {message, User#user.username, Message} || X <- UserPids],
   ok.
   
 add_user_to_active_users(User, Pid, State) ->
   ActiveUsers = State#state.active_users,
   NewActiveUsers = 
     case dict:find(User, ActiveUsers) of
-      {ok, _} -> dict:update(User, Pid, ActiveUsers);
+      {ok, _} -> dict:update(User, fun(_) -> [Pid] end, ActiveUsers);
       _ -> dict:append(User, Pid, ActiveUsers)
     end,
   State#state{active_users=NewActiveUsers}.
@@ -97,7 +105,7 @@ remove_user_from_active_users(User, Pid, State) ->
   ActiveUsers = State#state.active_users,
   NewActiveUsers =
     case dict:find(User, ActiveUsers) of
-      {ok, Pid} -> dict:erase(User, ActiveUsers);
+      {ok, [Pid]} -> dict:erase(User, ActiveUsers);
       _ -> ActiveUsers
     end,
   State#state{active_users=NewActiveUsers}.
