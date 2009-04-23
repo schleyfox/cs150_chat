@@ -2,7 +2,9 @@
 -export ([start/2, stop/1, route/1, request/1]).
 -behavior(application).
 
-start(_, _) -> nitrogen:start(cs150_chat).
+start(_, _) -> mnesia:start(), 
+              mnesia:wait_for_tables([user], 2000), 
+              nitrogen:start(cs150_chat).
 stop(_) -> nitrogen:stop().
 
 %% route/1 lets you define new URL routes to your web pages, 

@@ -2,9 +2,10 @@
 -export([authenticate/2, create/3, destroy/1, setup/0]).
 
 -include_lib("stdlib/include/qlc.hrl").
+-include("src/models.hrl").
 
--record(user, {username, realname, password_hash, salt}).
 
+% Run once
 setup() ->
   mnesia:create_schema([node()]),
   mnesia:start(),

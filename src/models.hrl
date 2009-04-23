@@ -1,0 +1,1 @@
+-record(user, {username, realname, password_hash, salt}).
