@@ -49,6 +49,8 @@ hash_password(Password) ->
   {erlang:md5(Password ++ Salt), Salt}.
 
 create_salt() ->
+  {A1, A2, A3} = now(),
+  random:seed(A1, A2, A3),
   lists:map(fun(_Elem) ->
       random:uniform(127-33)+33
     end,

@@ -12,10 +12,14 @@ title() ->
 body() ->
   authentication:requires_login(fun() ->
       Body = [
-        #panel {id=buddyList},
-        #panel {id=chatHistory, class=chat_history },
-        #textbox {id=messageTextBox, next=sendButton},
-        #button {id=sendButton, text="Talk", postback=chat}
+        #panel {style="width: 600px;", body = [
+          #panel {id=buddyList, style="background-color: #222; float: left; width: 120px; height: 320px; text-align: left; padding: 5px 5px 5px 5px; vertical-align: top;"},
+          #panel{ body = [
+            #panel {id=chatHistory, class=chat_history, style="height: 300px; overflow: auto;" },
+            #textbox {id=messageTextBox, next=sendButton, style="width:300px;"},
+            #button {id=sendButton, text="Talk", postback=chat}
+          ]}
+        ]}
       ],
       Pid = wf:comet(fun() -> listen_for_events() end),
       chats_server:add_user(authentication:current_user(), Pid),

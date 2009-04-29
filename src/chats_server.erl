@@ -2,7 +2,7 @@
 
 -behaviour(gen_server).
 
--export([start/0, add_user/2, remove_user/2, send_message/2, list_users/0]).
+-export([start/0, add_user/2, remove_user/2, send_message/2, list_users/0, list_user_pids/0]).
 
 -include_lib("src/models.hrl").
 
@@ -27,12 +27,19 @@ send_message(User, Message) ->
 list_users() ->
   gen_server:call(chats_server, list_users).
 
+list_user_pids() ->
+  gen_server:call(chats_server, list_user_pids).
+
 
 init([]) ->
   {ok, #state{active_users=dict:new()}}.
 
 handle_call(list_users, _From, State) ->
-  {reply, dict:fetch_keys(State#state.active_users), State};
+  NewState = refresh_active_users(State),
+  {reply, dict:fetch_keys(NewState#state.active_users), NewState};
+handle_call(list_user_pids, _From, State) ->
+  NewState = refresh_active_users(State),
+  {reply, NewState#state.active_users, NewState};
   
 handle_call(_Request, _From, State) ->
   Reply = ok,
@@ -42,7 +49,11 @@ handle_call(_Request, _From, State) ->
 handle_cast({message, User, Message}, State) ->
   send_message_to_all_users(User, Message, 
     users_to_pids(State#state.active_users)),
-  {noreply, refresh_active_users(State)};
+  case NewState = refresh_active_users(State) of
+    State -> refresh_all_buddy_lists(NewState);
+    _ -> false
+  end,
+  {noreply, NewState};
 
 % Add User
 handle_cast({add_user, User, Pid}, State) -> 
@@ -73,10 +84,7 @@ refresh_active_users(State) ->
     active_users=
       dict:filter(
         fun(_, [V]) ->
-          try is_process_alive(V)
-          catch
-            error:_ -> false
-          end
+          is_process_alive(V)
         end,
         State#state.active_users)}.
 
